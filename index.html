@@ -192,11 +192,34 @@ async function loadRoster() {
 }
 
 let currentEmergencyActive = false;
+let emergencyStartAtGlobal = null;
+
+function formatDuration_(ms) {
+  const totalMin = Math.floor(ms / 60000);
+  const days = Math.floor(totalMin / 1440);
+  const hours = Math.floor((totalMin % 1440) / 60);
+  const mins = totalMin % 60;
+  let out = '';
+  if (days > 0) out += days + '天';
+  if (days > 0 || hours > 0) out += hours + '小時';
+  out += mins + '分';
+  return out;
+}
+
+function updateEmergencyDuration() {
+  const el = document.getElementById('emergencyDuration');
+  if (!el) return;
+  if (!currentEmergencyActive || !emergencyStartAtGlobal) { el.textContent = ''; return; }
+  const elapsed = Date.now() - new Date(emergencyStartAtGlobal).getTime();
+  el.textContent = elapsed >= 0 ? '・已開設 ' + formatDuration_(elapsed) : '';
+}
+setInterval(updateEmergencyDuration, 1000);
 
 function renderStatus(json) {
   document.getElementById('currentTeamLabel').textContent = json.team + ' 班';
   document.getElementById('totalCount').textContent = json.rows.length;
   currentEmergencyActive = json.emergencyActive;
+  emergencyStartAtGlobal = json.emergencyStartAt || null;
   const dot = document.getElementById('statusDot');
   const ping = document.getElementById('statusPing');
   const text = document.getElementById('statusText');
@@ -206,10 +229,11 @@ function renderStatus(json) {
     dot.className = 'relative inline-flex rounded-full h-3 w-3 bg-red-500';
     ping.className = 'absolute inline-flex h-full w-full rounded-full opacity-75 bg-red-400 animate-ping';
     const startStr = json.emergencyStartAt ? new Date(json.emergencyStartAt).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }) : '';
-    text.textContent = '應變開設中' + (startStr ? '（' + startStr + '起）' : '');
+    text.innerHTML = '應變開設中' + (startStr ? '（' + startStr + '起）' : '') + '<span id="emergencyDuration"></span>';
     text.className = 'font-semibold text-red-600';
     btn.className = 'bg-slate-600 hover:bg-slate-700 text-white text-sm font-medium px-3.5 py-2 rounded-lg transition-colors shadow-sm flex items-center gap-2 active:scale-95';
     btnText.textContent = '解除';
+    updateEmergencyDuration();
   } else {
     dot.className = 'relative inline-flex rounded-full h-3 w-3 bg-emerald-500';
     ping.className = 'absolute inline-flex h-full w-full rounded-full opacity-75 bg-emerald-400 animate-ping';
