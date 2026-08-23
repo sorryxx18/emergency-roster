@@ -51,10 +51,20 @@
       <div class="text-sm text-slate-600">目前編組：<span class="font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded" id="currentTeamLabel">—</span></div>
       <div class="text-sm text-slate-600">應到人數：<span class="font-bold text-slate-900" id="totalCount">0</span> 人</div>
     </div>
-    <button onclick="loadRoster()" class="bg-red-600 hover:bg-red-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors shadow-sm flex items-center gap-2 active:scale-95">
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-      刷新編組
-    </button>
+    <div class="flex items-center gap-2">
+      <button onclick="exportRoster()" class="bg-white hover:bg-slate-50 text-slate-700 text-sm font-medium px-3.5 py-2 rounded-lg transition-colors shadow-sm border border-slate-200 flex items-center gap-2 active:scale-95">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H8a2 2 0 01-2-2V5a2 2 0 012-2h6l6 6v11a2 2 0 01-2 2z"/></svg>
+        匯出班表
+      </button>
+      <button onclick="shareRoster()" class="bg-white hover:bg-slate-50 text-slate-700 text-sm font-medium px-3.5 py-2 rounded-lg transition-colors shadow-sm border border-slate-200 flex items-center gap-2 active:scale-95">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
+        推播班表
+      </button>
+      <button onclick="loadRoster()" class="bg-red-600 hover:bg-red-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors shadow-sm flex items-center gap-2 active:scale-95">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+        刷新
+      </button>
+    </div>
   </div>
 </div>
 
@@ -135,6 +145,7 @@ async function loadRoster() {
     const json = await res.json();
     if (!json.ok) throw new Error('load failed');
     currentTeam = json.team;
+    lastRosterJson = json;
     renderStatus(json);
     renderRoster(json);
   } catch (e) {
@@ -297,6 +308,62 @@ async function confirmShift() {
   } catch (e) {
     closeModal();
     showToast('送出失敗，請稍後再試', false);
+  }
+}
+
+
+function buildRosterText(json) {
+  const grouped = {};
+  json.rows.forEach(r => {
+    if (!grouped[r.roleCategory]) grouped[r.roleCategory] = [];
+    grouped[r.roleCategory].push(r);
+  });
+  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
+  const pad = n => String(n).padStart(2,'0');
+  const dateStr = `${now.getFullYear()}年${pad(now.getMonth()+1)}月${pad(now.getDate())}日`;
+  let lines = [`🚒 二大應變編組表`, `${dateStr}｜${json.team}班`, ''];
+  json.roleOrder.forEach(role => {
+    const people = grouped[role];
+    if (!people) return;
+    lines.push(`${role}：${people.map(p => p.name).join('、')}`);
+  });
+  lines.push('', '—— 二大應變編組系統');
+  return lines.join('\n');
+}
+
+let lastRosterJson = null;
+
+async function exportRoster() {
+  if (!lastRosterJson) { showToast('請先等編組載入完成', false); return; }
+  const text = buildRosterText(lastRosterJson);
+  const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `二大應變編組_${lastRosterJson.team}班.txt`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('已匯出班表文字檔');
+}
+
+async function shareRoster() {
+  if (!lastRosterJson) { showToast('請先等編組載入完成', false); return; }
+  const text = buildRosterText(lastRosterJson);
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: '二大應變編組表', text });
+      return;
+    } catch (e) {
+      return; // user cancelled share sheet
+    }
+  }
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast('此裝置不支援分享，已複製班表文字，可直接貼到LINE');
+  } catch (e) {
+    showToast('分享失敗，請改用「匯出班表」下載', false);
   }
 }
 
