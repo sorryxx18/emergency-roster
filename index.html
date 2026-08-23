@@ -21,12 +21,20 @@
   h1 { font-size:22px; margin:0 0 6px; font-weight:700; }
   .sub { color:var(--muted); font-size:13px; }
 
-  .team-switch { display:flex; justify-content:center; gap:6px; margin:20px auto; max-width:340px; background:var(--card); border:1px solid var(--border); border-radius:999px; padding:5px; }
-  .team-switch button {
-    flex:1; padding:10px 0; border-radius:999px; border:none; background:transparent;
-    color:var(--muted); font-size:14px; font-weight:600; cursor:pointer; transition:.15s;
+  .status-bar {
+    max-width:520px; margin:16px auto 20px; background:var(--card); border:1px solid var(--border);
+    border-radius:16px; padding:16px 18px; display:flex; align-items:center; justify-content:space-between; gap:12px;
   }
-  .team-switch button.active { background:var(--accent); color:#fff; box-shadow:0 4px 14px rgba(59,130,246,.35); }
+  .status-left .team-label { font-size:13px; color:var(--muted); margin-bottom:2px; }
+  .status-left .team-value { font-size:20px; font-weight:800; color:var(--accent2); }
+  .status-right { text-align:right; font-size:13px; color:var(--muted); }
+  .status-right .now-time { font-size:15px; color:var(--text); font-weight:600; margin-bottom:2px; }
+  .emergency-row {
+    max-width:520px; margin:0 auto 20px; padding:0 16px; display:flex; align-items:center; gap:8px;
+    font-size:13px; color:var(--muted);
+  }
+  .emergency-dot { width:8px; height:8px; border-radius:50%; background:var(--muted); flex-shrink:0; }
+  .emergency-dot.active { background:var(--good); box-shadow:0 0 8px var(--good); }
 
   main { max-width:520px; margin:0 auto; padding:0 16px; }
   .role-group { margin-bottom:18px; }
@@ -83,7 +91,20 @@
     <div class="sub">點人員卡片可申請換人</div>
   </header>
 
-  <div class="team-switch" id="teamSwitch"></div>
+  <div class="status-bar">
+    <div class="status-left">
+      <div class="team-label">目前編組</div>
+      <div class="team-value" id="teamValue">— 班</div>
+    </div>
+    <div class="status-right">
+      <div class="now-time" id="nowTime">--:--:--</div>
+      <div id="nowDate">----年--月--日</div>
+    </div>
+  </div>
+  <div class="emergency-row">
+    <div class="emergency-dot" id="emergencyDot"></div>
+    <div id="emergencyText">尚未開設</div>
+  </div>
 
   <main id="content" class="loading">載入中...</main>
 
@@ -117,21 +138,43 @@ function showToast(msg) {
   setTimeout(() => t.style.display = 'none', 4000);
 }
 
-function renderTeamSwitch() {
-  const wrap = document.getElementById('teamSwitch');
-  wrap.innerHTML = ['A', 'B', 'C'].map(t =>
-    `<button class="${t === currentTeam ? 'active' : ''}" onclick="loadRoster('${t}')">${t} 班</button>`
-  ).join('');
+function taipeiNow() {
+  return new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
 }
 
-async function loadRoster(team) {
-  currentTeam = team;
-  renderTeamSwitch();
+function updateClock() {
+  const now = taipeiNow();
+  const pad = n => String(n).padStart(2, '0');
+  document.getElementById('nowTime').textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+  document.getElementById('nowDate').textContent = `${now.getFullYear()}年${pad(now.getMonth()+1)}月${pad(now.getDate())}日`;
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+function renderStatus(json) {
+  document.getElementById('teamValue').textContent = json.team + ' 班';
+  const dot = document.getElementById('emergencyDot');
+  const text = document.getElementById('emergencyText');
+  if (json.emergencyActive) {
+    dot.classList.add('active');
+    const startAt = json.emergencyStartAt ? new Date(json.emergencyStartAt) : null;
+    const startStr = startAt ? new Date(startAt.toLocaleString('en-US', { timeZone: 'Asia/Taipei' }))
+      .toLocaleString('zh-TW', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }) : '';
+    text.textContent = '應變已開設' + (startStr ? `（開設時間 ${startStr}）` : '');
+  } else {
+    dot.classList.remove('active');
+    text.textContent = '尚未開設，目前為預告班表';
+  }
+}
+
+async function loadRoster() {
   document.getElementById('content').innerHTML = '<div class="loading">載入中...</div>';
   try {
-    const res = await fetch(`${API_URL}?action=roster&team=${team}`);
+    const res = await fetch(`${API_URL}?action=roster`);
     const json = await res.json();
     if (!json.ok) throw new Error('load failed');
+    currentTeam = json.team;
+    renderStatus(json);
     renderRoster(json);
   } catch (e) {
     document.getElementById('content').innerHTML = '<div class="loading">載入失敗，稍後再試</div>';
@@ -206,8 +249,7 @@ async function submitSwap() {
   }
 }
 
-renderTeamSwitch();
-loadRoster('A');
+loadRoster();
 </script>
 </body>
 </html>
