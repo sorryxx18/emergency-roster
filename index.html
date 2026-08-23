@@ -5,41 +5,87 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ABC應變編組表</title>
 <style>
-  :root { --bg:#0f172a; --card:#1e293b; --border:#334155; --text:#e2e8f0; --muted:#94a3b8; --accent:#2563eb; }
-  * { box-sizing:border-box; }
-  body { font-family:-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif; background:var(--bg); color:var(--text); margin:0; padding:16px; }
-  h1 { font-size:20px; text-align:center; margin:8px 0 4px; }
-  .sub { text-align:center; color:var(--muted); font-size:13px; margin-bottom:20px; }
-  .team-switch { display:flex; justify-content:center; gap:8px; margin-bottom:16px; }
-  .team-switch button { padding:8px 18px; border-radius:8px; border:1px solid var(--border); background:var(--card); color:var(--text); font-size:14px; cursor:pointer; }
-  .team-switch button.active { background:var(--accent); border-color:var(--accent); }
-  table { width:100%; border-collapse:collapse; background:var(--card); border-radius:10px; overflow:hidden; }
-  th, td { padding:10px 12px; text-align:left; border-bottom:1px solid var(--border); font-size:14px; }
-  th { background:var(--bg); color:var(--muted); font-weight:600; }
-  .role-cell { color:var(--muted); width:100px; vertical-align:top; }
-  .name-cell { cursor:pointer; }
-  .name-cell:active { background:#475569; }
-  .loading { text-align:center; color:var(--muted); padding:40px; }
+  :root {
+    --bg:#0b1220; --bg2:#0f172a; --card:#151f32; --card2:#1c2942;
+    --border:#28324a; --text:#eef2ff; --muted:#8b96b5; --accent:#3b82f6;
+    --accent2:#60a5fa; --good:#22c55e;
+  }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body {
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang TC","Microsoft JhengHei",sans-serif;
+    background:radial-gradient(circle at top, #16213e 0%, var(--bg) 60%);
+    color:var(--text); margin:0; padding:0 0 40px; min-height:100vh;
+  }
+  header { padding:28px 16px 16px; text-align:center; }
+  header .badge { display:inline-block; font-size:12px; letter-spacing:.08em; color:var(--accent2); background:rgba(59,130,246,.12); padding:4px 12px; border-radius:999px; margin-bottom:10px; }
+  h1 { font-size:22px; margin:0 0 6px; font-weight:700; }
+  .sub { color:var(--muted); font-size:13px; }
 
-  .modal-bg { display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); align-items:center; justify-content:center; padding:16px; }
+  .team-switch { display:flex; justify-content:center; gap:6px; margin:20px auto; max-width:340px; background:var(--card); border:1px solid var(--border); border-radius:999px; padding:5px; }
+  .team-switch button {
+    flex:1; padding:10px 0; border-radius:999px; border:none; background:transparent;
+    color:var(--muted); font-size:14px; font-weight:600; cursor:pointer; transition:.15s;
+  }
+  .team-switch button.active { background:var(--accent); color:#fff; box-shadow:0 4px 14px rgba(59,130,246,.35); }
+
+  main { max-width:520px; margin:0 auto; padding:0 16px; }
+  .role-group { margin-bottom:18px; }
+  .role-title {
+    font-size:12px; color:var(--accent2); font-weight:700; letter-spacing:.05em;
+    margin:0 0 8px 4px; display:flex; align-items:center; gap:6px;
+  }
+  .role-title::before { content:''; width:4px; height:14px; background:var(--accent); border-radius:2px; display:inline-block; }
+  .person-card {
+    background:var(--card); border:1px solid var(--border); border-radius:14px;
+    padding:14px 16px; margin-bottom:8px; display:flex; align-items:center;
+    justify-content:space-between; cursor:pointer; transition:.15s;
+  }
+  .person-card:active { background:var(--card2); transform:scale(.98); }
+  .person-info { display:flex; flex-direction:column; gap:3px; }
+  .person-name { font-size:16px; font-weight:600; }
+  .person-phone { font-size:13px; color:var(--muted); }
+  .swap-hint { font-size:12px; color:var(--accent2); background:rgba(59,130,246,.1); padding:6px 10px; border-radius:8px; white-space:nowrap; }
+
+  .loading { text-align:center; color:var(--muted); padding:60px 0; font-size:14px; }
+
+  .modal-bg { display:none; position:fixed; inset:0; background:rgba(5,8,16,.7); backdrop-filter:blur(3px); align-items:flex-end; justify-content:center; z-index:10; }
   .modal-bg.open { display:flex; }
-  .modal { background:var(--card); border-radius:12px; padding:20px; width:100%; max-width:380px; }
-  .modal h2 { font-size:16px; margin:0 0 12px; }
-  .modal .info { background:var(--bg); padding:10px; border-radius:8px; font-size:13px; color:var(--muted); margin-bottom:14px; }
-  .modal label { display:block; font-size:12px; color:var(--muted); margin:10px 0 4px; }
-  .modal input { width:100%; padding:10px; border-radius:6px; border:1px solid var(--border); background:var(--bg); color:var(--text); font-size:15px; }
-  .modal .actions { display:flex; gap:10px; margin-top:18px; }
-  .modal button { flex:1; padding:11px; border:none; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; }
+  .modal {
+    background:var(--card); border-radius:20px 20px 0 0; padding:24px 20px 28px;
+    width:100%; max-width:460px; animation:slideUp .2s ease-out;
+  }
+  @keyframes slideUp { from { transform:translateY(30px); opacity:0; } to { transform:translateY(0); opacity:1; } }
+  .modal h2 { font-size:17px; margin:0 0 14px; }
+  .modal .info { background:var(--bg2); border:1px solid var(--border); padding:12px 14px; border-radius:10px; font-size:13px; color:var(--muted); margin-bottom:16px; }
+  .modal label { display:block; font-size:12px; color:var(--muted); margin:12px 0 5px; font-weight:600; }
+  .modal input {
+    width:100%; padding:12px 14px; border-radius:10px; border:1px solid var(--border);
+    background:var(--bg2); color:var(--text); font-size:15px;
+  }
+  .modal input:focus { outline:none; border-color:var(--accent); }
+  .modal .actions { display:flex; gap:10px; margin-top:22px; }
+  .modal button { flex:1; padding:13px; border:none; border-radius:12px; font-size:15px; font-weight:700; cursor:pointer; }
   .btn-submit { background:var(--accent); color:#fff; }
-  .btn-cancel { background:var(--border); color:var(--text); }
-  .toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--card); border:1px solid var(--border); padding:12px 20px; border-radius:8px; font-size:14px; display:none; max-width:90%; text-align:center; }
+  .btn-cancel { background:var(--bg2); color:var(--muted); border:1px solid var(--border) !important; }
+
+  .toast {
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
+    background:var(--card2); border:1px solid var(--border); padding:13px 22px;
+    border-radius:12px; font-size:14px; display:none; max-width:88%; text-align:center;
+    box-shadow:0 8px 24px rgba(0,0,0,.4); z-index:20;
+  }
 </style>
 </head>
 <body>
-  <h1>🚒 應變編組表</h1>
-  <div class="sub">點姓名可申請換人</div>
+  <header>
+    <div class="badge">TAIPEI FIRE · 應變編組</div>
+    <h1>🚒 ABC應變編組表</h1>
+    <div class="sub">點人員卡片可申請換人</div>
+  </header>
+
   <div class="team-switch" id="teamSwitch"></div>
-  <div id="content" class="loading">載入中...</div>
+
+  <main id="content" class="loading">載入中...</main>
 
   <div class="modal-bg" id="modalBg">
     <div class="modal">
@@ -49,7 +95,7 @@
       <input type="text" id="fName">
       <label>代班人電話</label>
       <input type="tel" id="fPhone">
-      <label>代班人Email（確認信會寄到這裡）</label>
+      <label>代班人 Email（確認信會寄到這裡）</label>
       <input type="email" id="fEmail">
       <div class="actions">
         <button class="btn-cancel" onclick="closeModal()">取消</button>
@@ -74,7 +120,7 @@ function showToast(msg) {
 function renderTeamSwitch() {
   const wrap = document.getElementById('teamSwitch');
   wrap.innerHTML = ['A', 'B', 'C'].map(t =>
-    `<button class="${t === currentTeam ? 'active' : ''}" onclick="loadRoster('${t}')">${t}班</button>`
+    `<button class="${t === currentTeam ? 'active' : ''}" onclick="loadRoster('${t}')">${t} 班</button>`
   ).join('');
 }
 
@@ -98,18 +144,25 @@ function renderRoster(json) {
     if (!grouped[r.roleCategory]) grouped[r.roleCategory] = [];
     grouped[r.roleCategory].push(r);
   });
-  let rowsHtml = '';
+  let html = '';
   json.roleOrder.forEach(role => {
     const people = grouped[role];
     if (!people) return;
-    people.forEach((p, i) => {
-      rowsHtml += '<tr>';
-      if (i === 0) rowsHtml += `<td class="role-cell" rowspan="${people.length}">${role}</td>`;
-      rowsHtml += `<td class="name-cell" onclick='openModal(${JSON.stringify(json.team)}, ${JSON.stringify(role)}, ${p.slotIndex}, ${JSON.stringify(p.name)})'>${p.name}</td>`;
-      rowsHtml += '</tr>';
+    html += `<div class="role-group"><div class="role-title">${role}</div>`;
+    people.forEach(p => {
+      const phoneHtml = p.phone ? `<div class="person-phone">📞 ${p.phone}</div>` : '';
+      html += `
+        <div class="person-card" onclick='openModal(${JSON.stringify(json.team)}, ${JSON.stringify(role)}, ${p.slotIndex}, ${JSON.stringify(p.name)})'>
+          <div class="person-info">
+            <div class="person-name">${p.name}</div>
+            ${phoneHtml}
+          </div>
+          <div class="swap-hint">換人</div>
+        </div>`;
     });
+    html += '</div>';
   });
-  document.getElementById('content').innerHTML = `<table><tr><th>職務</th><th>姓名</th></tr>${rowsHtml}</table>`;
+  document.getElementById('content').innerHTML = html;
 }
 
 function openModal(team, role, slot, name) {
