@@ -88,7 +88,7 @@
   <header>
     <div class="badge">TAIPEI FIRE · 應變編組</div>
     <h1>🚒 ABC應變編組表</h1>
-    <div class="sub">點人員卡片可申請換人</div>
+    <div class="sub">點人員卡片可申請換班</div>
   </header>
 
   <div class="status-bar">
@@ -110,7 +110,7 @@
 
   <div class="modal-bg" id="modalBg">
     <div class="modal">
-      <h2>申請換人</h2>
+      <h2>申請換班</h2>
       <div class="info" id="modalInfo"></div>
       <label>代班人姓名</label>
       <input type="text" id="fName">
@@ -200,7 +200,7 @@ function renderRoster(json) {
             <div class="person-name">${p.name}</div>
             ${phoneHtml}
           </div>
-          <div class="swap-hint">換人</div>
+          <div class="swap-hint">換班</div>
         </div>`;
     });
     html += '</div>';
