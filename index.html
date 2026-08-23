@@ -223,6 +223,7 @@ function renderStatus(json) {
 function openEmergencyModal() {
   if (currentEmergencyActive) {
     if (!confirm('確定要解除應變編組嗎？')) return;
+    if (!confirm('再次確認：真的要解除嗎？編組表狀態會改變。')) return;
     fetch(API_URL, {
       method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'set_emergency', active: false })
@@ -245,6 +246,7 @@ function closeEmergencyModal() {
 async function confirmOpenEmergency() {
   const val = document.getElementById('emergencyStartInput').value;
   if (!val) { showToast('請選擇開設時間', false); return; }
+  if (!confirm('再次確認：真的要開設應變編組嗎？')) return;
   // datetime-local輸入視為台灣時間，補上+08:00時區
   const startAt = val + ':00+08:00';
   try {
