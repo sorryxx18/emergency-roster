@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>二大應變編組</title>
 <script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
 <style>
@@ -484,19 +486,94 @@ function buildRosterText(json) {
 
 let lastRosterJson = null;
 
+function pad2_(n) { return String(n).padStart(2, '0'); }
+
+function taipeiNow_() {
+  return new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
+}
+
+function buildPdfHtml_(json) {
+  const grouped = {};
+  json.rows.forEach(r => {
+    if (!grouped[r.roleCategory]) grouped[r.roleCategory] = [];
+    grouped[r.roleCategory].push(r);
+  });
+  const now = taipeiNow_();
+  const dateStr = `${now.getFullYear()}年${pad2_(now.getMonth() + 1)}月${pad2_(now.getDate())}日`;
+  const timeStr = `${pad2_(now.getHours())}:${pad2_(now.getMinutes())}`;
+  const statusText = json.emergencyActive
+    ? `● 應變開設中${json.emergencyStartAt ? '（' + new Date(json.emergencyStartAt).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) + ' 起）' : ''}`
+    : '○ 尚未開設・預告班表';
+
+  const rolesWithPeople = json.roleOrder.filter(r => grouped[r]);
+  const mid = Math.ceil(rolesWithPeople.length / 2);
+  const leftRoles = rolesWithPeople.slice(0, mid);
+  const rightRoles = rolesWithPeople.slice(mid);
+
+  function renderRoleBlock(role) {
+    const rows = grouped[role].map(p => `
+      <div style="display:flex;justify-content:space-between;padding:5px 10px;border-bottom:1px solid #f1d9d9;font-size:13px;">
+        <span style="color:#1e293b;">${p.name}</span>
+        <span style="color:#64748b;">${p.phone || ''}</span>
+      </div>`).join('');
+    return `
+      <div style="margin-bottom:12px;">
+        <div style="background:#fef2f2;border-left:4px solid #dc2626;padding:5px 10px;font-size:13px;font-weight:700;color:#991b1b;">${role}</div>
+        ${rows}
+      </div>`;
+  }
+
+  const leftHtml = leftRoles.map(renderRoleBlock).join('');
+  const rightHtml = rightRoles.map(renderRoleBlock).join('');
+
+  return `
+    <div style="width:754px;padding:20px;font-family:'Noto Sans TC',sans-serif;background:#fff;color:#1e293b;">
+      <div style="background:linear-gradient(90deg,#b91c1c,#ea580c);border-radius:10px;padding:18px 22px;color:#fff;margin-bottom:16px;">
+        <div style="font-size:20px;font-weight:900;">🚒 二大應變編組表</div>
+        <div style="font-size:12px;opacity:.9;margin-top:2px;">臺北市政府消防局 第二救災救護大隊・Z-TEAM</div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:10px;">
+          <div style="font-size:13px;">${dateStr}（列印時間 ${timeStr}）｜目前編組：<b style="font-size:16px;">${json.team}班</b></div>
+          <div style="font-size:12px;">${statusText}</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:20px;">
+        <div style="flex:1;">${leftHtml}</div>
+        <div style="flex:1;">${rightHtml}</div>
+      </div>
+      <div style="margin-top:18px;text-align:center;font-size:11px;color:#94a3b8;">—— 二大應變編組系統 自動產生 ——</div>
+    </div>`;
+}
+
 async function exportRoster() {
   if (!lastRosterJson) { showToast('請先等編組載入完成', false); return; }
-  const text = buildRosterText(lastRosterJson);
-  const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `二大應變編組_${lastRosterJson.team}班.txt`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  showToast('已匯出班表文字檔');
+  const root = document.getElementById('pdfExportRoot');
+  root.innerHTML = buildPdfHtml_(lastRosterJson);
+  await new Promise(r => setTimeout(r, 50));
+  try {
+    const canvas = await html2canvas(root.firstElementChild, { scale: 2, backgroundColor: '#ffffff' });
+    const imgData = canvas.toDataURL('image/png');
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const imgW = pageWidth - 20;
+    const imgH = (canvas.height * imgW) / canvas.width;
+    if (imgH <= pageHeight - 20) {
+      pdf.addImage(imgData, 'PNG', 10, 10, imgW, imgH);
+    } else {
+      const scaledH = pageHeight - 20;
+      const scaledW = (canvas.width * scaledH) / canvas.height;
+      pdf.addImage(imgData, 'PNG', (pageWidth - scaledW) / 2, 10, scaledW, scaledH);
+    }
+    const now = taipeiNow_();
+    const fileDate = `${now.getFullYear()}${pad2_(now.getMonth() + 1)}${pad2_(now.getDate())}`;
+    pdf.save(`二大應變編組_${lastRosterJson.team}班_${fileDate}.pdf`);
+    showToast('已匯出PDF班表');
+  } catch (e) {
+    showToast('PDF產生失敗：' + e.message, false);
+  } finally {
+    root.innerHTML = '';
+  }
 }
 
 async function shareRoster() {
@@ -520,6 +597,7 @@ async function shareRoster() {
 
 loadRoster();
 </script>
+<div id="pdfExportRoot" style="position:fixed;left:-9999px;top:0;"></div>
 </div>
 </body>
 </html>
