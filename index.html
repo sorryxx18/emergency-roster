@@ -269,9 +269,7 @@ function renderRotationPreview(json) {
     el.textContent = '無資料';
     return;
   }
-  label.textContent = json.emergencyActive
-    ? '未來3天預覽（假設此次應變持續開設，點選查看當天完整班表）：'
-    : '未來3天預覽（假設現在開設，點選查看當天完整班表）：';
+  label.textContent = '未來3天預排班表（點選查看當天完整班表）：';
   el.innerHTML = json.rotationPreview.map(p =>
     `<button onclick="showPreviewRoster('${p.team}','${p.date}')" class="inline-flex items-center bg-white hover:bg-amber-100 text-amber-900 font-semibold px-2 py-1 rounded-md border border-amber-300 mx-0.5 active:scale-95 transition-colors">${p.date} ${p.team}班</button>`
   ).join('<span class="text-amber-400 mx-0.5">→</span>');
@@ -284,7 +282,7 @@ async function showPreviewRoster(team, dateLabel) {
     const json = await res.json();
     if (!json.ok) throw new Error('load failed');
     document.getElementById('previewBanner').classList.remove('hidden');
-    document.getElementById('previewBannerText').textContent = `這是假設預覽：${dateLabel} 預期由 ${team} 班值勤（非目前實際班表）`;
+    document.getElementById('previewBannerText').textContent = `預排班表：${dateLabel} ${team}班（非目前即時班表）`;
     renderRoster(json);
   } catch (e) {
     document.getElementById('content').innerHTML = '<div class="text-center py-20 text-red-500">載入失敗，請重試</div>';
