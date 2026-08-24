@@ -74,6 +74,13 @@
   </div>
 </div>
 
+<div class="bg-amber-50 border-b border-amber-200">
+  <div class="max-w-5xl mx-auto px-4 py-2 flex flex-wrap items-center gap-2 text-sm">
+    <span class="text-amber-800 font-medium whitespace-nowrap" id="previewLabel">未來3天預覽（假設）：</span>
+    <span id="rotationPreview" class="text-amber-900 font-semibold">載入中...</span>
+  </div>
+</div>
+
 <main class="max-w-5xl mx-auto px-4 py-6" id="content">
   <div class="text-center py-20 text-slate-400">載入中...</div>
 </main>
@@ -245,6 +252,20 @@ function renderStatus(json) {
     btn.className = 'bg-orange-600 hover:bg-orange-700 text-white text-sm font-medium px-3.5 py-2 rounded-lg transition-colors shadow-sm flex items-center gap-2 active:scale-95';
     btnText.textContent = '開設';
   }
+  renderRotationPreview(json);
+}
+
+function renderRotationPreview(json) {
+  const label = document.getElementById('previewLabel');
+  const el = document.getElementById('rotationPreview');
+  if (!json.rotationPreview || !json.rotationPreview.length) {
+    el.textContent = '無資料';
+    return;
+  }
+  label.textContent = json.emergencyActive
+    ? '未來3天預覽（假設此次應變持續開設）：'
+    : '未來3天預覽（假設現在開設）：';
+  el.textContent = json.rotationPreview.map(p => `${p.date} ${p.team}班`).join('　→　');
 }
 
 function taipeiLocalInputValue_() {
